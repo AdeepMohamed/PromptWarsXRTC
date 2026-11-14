@@ -8,7 +8,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 90000,
+  timeout: 120000,
 });
 
 api.interceptors.request.use((config) => {
@@ -21,14 +21,34 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const config = error.config as any;
+
     if (error.response?.status === 401) {
       localStorage.removeItem("cognify_token");
       localStorage.removeItem("cognify_user");
       if (window.location.pathname !== "/login" && window.location.pathname !== "/" && window.location.pathname !== "/register") {
         window.location.href = "/login";
       }
+      return Promise.reject(error);
     }
+
+    // Resilient auto-retry for Render serverless cold-starts (up to 3 automatic retries)
+    if (config) {
+      config.retryCount = config.retryCount || 0;
+      const isNetworkOrTimeout =
+        !error.response ||
+        [408, 502, 503, 504].includes(error.response?.status) ||
+        error.code === "ECONNABORTED";
+
+      if (isNetworkOrTimeout && config.retryCount < 3) {
+        config.retryCount += 1;
+        const delay = Math.min(config.retryCount * 2500, 7000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return api(config);
+      }
+    }
+
     return Promise.reject(error);
   }
 );

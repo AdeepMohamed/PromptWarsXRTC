@@ -85,9 +85,28 @@ export function AppRoutes() {
   );
 }
 
+import api from "./lib/api";
+
+function BackendWarmup() {
+  React.useEffect(() => {
+    // 1. Instantly trigger background wake-up probe when visitor loads app
+    api.get("/health").catch(() => {});
+
+    // 2. Heartbeat every 4 minutes while browser tab is open to keep container active
+    const timer = setInterval(() => {
+      api.get("/health").catch(() => {});
+    }, 4 * 60 * 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
+      <BackendWarmup />
       <BrowserRouter>
         <AppRoutes />
       </BrowserRouter>
