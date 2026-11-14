@@ -40,17 +40,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routes under /api
-app.include_router(auth_router, prefix="/api")
-app.include_router(learner_router, prefix="/api")
-app.include_router(career_router, prefix="/api")
-app.include_router(skills_router, prefix="/api")
-app.include_router(roadmap_router, prefix="/api")
-app.include_router(assessment_router, prefix="/api")
-app.include_router(mentor_router, prefix="/api")
-app.include_router(agents_router, prefix="/api")
-app.include_router(analytics_router, prefix="/api")
-app.include_router(project_router, prefix="/api")
+# Register routes under both /api and root for maximum client URL resilience
+routers = [
+    auth_router,
+    learner_router,
+    career_router,
+    skills_router,
+    roadmap_router,
+    assessment_router,
+    mentor_router,
+    agents_router,
+    analytics_router,
+    project_router,
+]
+for r in routers:
+    app.include_router(r, prefix="/api")
+    app.include_router(r)
 
 
 @app.get("/")
