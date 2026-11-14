@@ -37,7 +37,7 @@ class LearningRoadmap(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    learner: Mapped["LearnerProfile"] = relationship(back_populates="roadmaps", lazy="selectin")
+    learner: Mapped["LearnerProfile"] = relationship(back_populates="roadmaps")
     career: Mapped["CareerRole"] = relationship(lazy="selectin")
     tasks: Mapped[list["RoadmapTask"]] = relationship(back_populates="roadmap", lazy="selectin", order_by="RoadmapTask.order_index")
 

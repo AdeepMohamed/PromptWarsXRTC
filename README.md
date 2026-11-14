@@ -1,5 +1,7 @@
-# COGNIFY AI
-### Transform Knowledge into Career Intelligence.
+<div align="center">
+  <img src="./logo.png" alt="COGNIFY AI Logo" width="650"/>
+  <p><strong>Transform Knowledge into Career Intelligence.</strong></p>
+</div>
 
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React_19_+_Vite-61DAFB.svg?style=flat&logo=react)](https://react.dev)

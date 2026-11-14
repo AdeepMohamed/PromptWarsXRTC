@@ -118,7 +118,7 @@ async def get_roadmap(db: AsyncSession, user: User, career_id=None) -> dict:
     query = query.order_by(LearningRoadmap.created_at.desc())
 
     result = await db.execute(query)
-    roadmap = result.scalar_one_or_none()
+    roadmap = result.scalars().first()
     if not roadmap:
         raise HTTPException(status_code=404, detail="No roadmap found")
 

@@ -34,14 +34,9 @@ export function LandingPage() {
       {/* Header */}
       <header className="border-b border-slate-800/80 backdrop-blur-md sticky top-0 z-50 bg-slate-900/80">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
-              COGNIFY <span className="text-violet-400 text-xs px-2 py-0.5 rounded bg-violet-950/80 border border-violet-800/60 font-semibold">AI</span>
-            </span>
-          </div>
+          <Link to="/" className="flex items-center space-x-3">
+            <img src="/logo.png" alt="COGNIFY AI" className="h-10 w-auto object-contain" />
+          </Link>
 
           <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
             <a href="#agents" className="hover:text-white transition">Agent Architecture</a>

@@ -15,7 +15,7 @@ class LearningActivity(Base):
     activity_metadata: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    learner: Mapped["LearnerProfile"] = relationship(back_populates="activities", lazy="selectin")
+    learner: Mapped["LearnerProfile"] = relationship(back_populates="activities")
 
 
 class CareerGoalHistory(Base):
@@ -29,6 +29,6 @@ class CareerGoalHistory(Base):
     reason: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
-    learner: Mapped["LearnerProfile"] = relationship(back_populates="goal_history", lazy="selectin")
+    learner: Mapped["LearnerProfile"] = relationship(back_populates="goal_history")
     previous_career: Mapped["CareerRole"] = relationship(foreign_keys=[previous_career_id], lazy="selectin")
     new_career: Mapped["CareerRole"] = relationship(foreign_keys=[new_career_id], lazy="selectin")

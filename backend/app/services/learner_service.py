@@ -17,23 +17,22 @@ async def get_learner_profile(db: AsyncSession, user: User) -> dict:
     if not profile:
         raise HTTPException(status_code=404, detail="Learner profile not found")
 
-    # Get skills
-    skills_result = await db.execute(
-        select(LearnerSkill).where(LearnerSkill.learner_id == profile.id)
+    # Get skills with joined skill name in 1 query (eliminates N+1 loop)
+    skills_query = await db.execute(
+        select(LearnerSkill, Skill.name)
+        .join(Skill, LearnerSkill.skill_id == Skill.id)
+        .where(LearnerSkill.learner_id == profile.id)
     )
-    learner_skills = skills_result.scalars().all()
-
-    skills_list = []
-    for ls in learner_skills:
-        skill_result = await db.execute(select(Skill).where(Skill.id == ls.skill_id))
-        skill = skill_result.scalar_one_or_none()
-        skills_list.append(LearnerSkillItem(
+    skills_list = [
+        LearnerSkillItem(
             skill_id=ls.skill_id,
-            name=skill.name if skill else None,
+            name=sname,
             proficiency=ls.proficiency,
             confidence=ls.confidence,
             source=ls.source,
-        ))
+        )
+        for ls, sname in skills_query.all()
+    ]
 
     target_career = None
     if profile.target_career_id:

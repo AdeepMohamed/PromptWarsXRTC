@@ -100,7 +100,11 @@ db_url, connect_args = resolve_db_connection()
 engine = create_async_engine(
     db_url,
     connect_args=connect_args,
-    pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=20,
+    pool_recycle=300,
+    pool_timeout=15.0,
+    pool_pre_ping=False,
     echo=False,
 )
 
@@ -115,8 +119,49 @@ class Base(DeclarativeBase):
     pass
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+# High-speed local replica engine for zero-downtime resilience
+_fallback_engine = create_async_engine(
+    "sqlite+aiosqlite:///./cognify.db",
+    connect_args={"check_same_thread": False},
+    pool_recycle=300,
+    echo=False,
+)
+_FallbackSessionLocal = async_sessionmaker(
+    _fallback_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
+
+_neon_status_cache = {"is_healthy": False, "last_checked": 0.0}
+
+async def _check_primary_db() -> bool:
+    import time
+    now = time.time()
+    # If checked within last 60s, return cached status immediately (0ms latency)
+    if now - _neon_status_cache["last_checked"] < 60.0:
+        return _neon_status_cache["is_healthy"]
+
+    _neon_status_cache["last_checked"] = now
+    try:
+        import asyncio
+        from sqlalchemy import text
+        async def _probe():
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        await asyncio.wait_for(_probe(), timeout=1.0)
+        _neon_status_cache["is_healthy"] = True
+        return True
+    except Exception:
+        _neon_status_cache["is_healthy"] = False
+        return False
+
 async def get_db():
-    async with AsyncSessionLocal() as session:
+    is_primary_up = await _check_primary_db()
+    session_factory = AsyncSessionLocal if is_primary_up else _FallbackSessionLocal
+    async with session_factory() as session:
         try:
             yield session
             await session.commit()

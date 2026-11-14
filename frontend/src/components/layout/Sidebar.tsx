@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -16,8 +16,10 @@ import {
   LogOut,
   Sparkles,
   User as UserIcon,
+  PlayCircle,
 } from "lucide-react";
 import { useAuthContext } from "../../contexts/AuthContext";
+import { GuidedTourModal } from "../demo/GuidedTourModal";
 
 const NAV_ITEMS = [
   { label: "Overview", path: "/dashboard", icon: LayoutDashboard },
@@ -38,6 +40,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthContext();
+  const [tourOpen, setTourOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -45,19 +48,26 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0 border-r border-slate-800">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-slate-800 flex items-center space-x-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
-          <Sparkles className="w-5 h-5 text-white" />
+    <>
+      <GuidedTourModal isOpen={tourOpen} onClose={() => setTourOpen(false)} />
+      <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0 border-r border-slate-800">
+        {/* Brand Header */}
+        <div className="p-4 border-b border-slate-800 flex items-center justify-center">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <img src="/logo.png" alt="COGNIFY AI" className="h-10 w-auto object-contain" />
+          </Link>
         </div>
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
-            COGNIFY <span className="text-violet-400 text-xs px-1.5 py-0.5 rounded bg-violet-950/80 border border-violet-700/50">AI</span>
-          </h1>
-          <p className="text-[11px] text-slate-400 font-medium">Career Intelligence</p>
+
+        {/* Interactive Guided Demo Button */}
+        <div className="px-3 pt-3">
+          <button
+            onClick={() => setTourOpen(true)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-lg shadow-violet-600/30 border border-violet-400/30 transition transform hover:-translate-y-0.5"
+          >
+            <PlayCircle className="w-4 h-4 text-violet-200" />
+            <span>Explore Alex's Journey</span>
+          </button>
         </div>
-      </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">

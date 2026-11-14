@@ -30,11 +30,13 @@ async def analyze_career(db: AsyncSession, user: User, career_id) -> dict:
     if not career:
         raise HTTPException(status_code=404, detail="Career not found")
 
-    # Get requirements
+    # Get requirements with joined Skill names in a single query (eliminating N+1 query loop)
     reqs = await db.execute(
-        select(CareerRequirement).where(CareerRequirement.career_id == career_id)
+        select(CareerRequirement, Skill.name)
+        .join(Skill, CareerRequirement.skill_id == Skill.id)
+        .where(CareerRequirement.career_id == career_id)
     )
-    requirements = reqs.scalars().all()
+    requirements_data = reqs.all()
 
     # Get learner skills
     ls_result = await db.execute(
@@ -48,10 +50,7 @@ async def analyze_career(db: AsyncSession, user: User, career_id) -> dict:
     total_score = 0
     total_weight = 0
 
-    for req in requirements:
-        skill_result = await db.execute(select(Skill).where(Skill.id == req.skill_id))
-        skill = skill_result.scalar_one_or_none()
-        skill_name = skill.name if skill else "Unknown"
+    for req, skill_name in requirements_data:
         current = learner_skills.get(req.skill_id, 0)
         gap = max(0, req.min_proficiency - current)
 
@@ -142,9 +141,11 @@ async def get_skill_gaps(db: AsyncSession, user: User, career_id) -> list:
         raise HTTPException(status_code=404, detail="Profile not found")
 
     reqs = await db.execute(
-        select(CareerRequirement).where(CareerRequirement.career_id == career_id)
+        select(CareerRequirement, Skill.name)
+        .join(Skill, CareerRequirement.skill_id == Skill.id)
+        .where(CareerRequirement.career_id == career_id)
     )
-    requirements = reqs.scalars().all()
+    requirements_data = reqs.all()
 
     ls_result = await db.execute(
         select(LearnerSkill).where(LearnerSkill.learner_id == profile.id)
@@ -152,13 +153,11 @@ async def get_skill_gaps(db: AsyncSession, user: User, career_id) -> list:
     learner_skills = {ls.skill_id: ls.proficiency for ls in ls_result.scalars().all()}
 
     gaps = []
-    for req in requirements:
-        skill_result = await db.execute(select(Skill).where(Skill.id == req.skill_id))
-        skill = skill_result.scalar_one_or_none()
+    for req, skill_name in requirements_data:
         current = learner_skills.get(req.skill_id, 0)
         gap_val = max(0, req.min_proficiency - current)
         gaps.append(SkillGapResponse(
-            skill=skill.name if skill else "Unknown",
+            skill=skill_name or "Unknown",
             current_proficiency=current,
             required_proficiency=req.min_proficiency,
             importance=req.importance,
@@ -178,9 +177,11 @@ async def analyze_skills(db: AsyncSession, user: User) -> dict:
         raise HTTPException(status_code=404, detail="Profile not found")
 
     ls_result = await db.execute(
-        select(LearnerSkill).where(LearnerSkill.learner_id == profile.id)
+        select(LearnerSkill, Skill)
+        .join(Skill, LearnerSkill.skill_id == Skill.id)
+        .where(LearnerSkill.learner_id == profile.id)
     )
-    learner_skills = ls_result.scalars().all()
+    learner_skills_data = ls_result.all()
 
     technical = []
     soft = []
@@ -188,9 +189,7 @@ async def analyze_skills(db: AsyncSession, user: User) -> dict:
     weaknesses = []
     categories = {}
 
-    for ls in learner_skills:
-        skill_result = await db.execute(select(Skill).where(Skill.id == ls.skill_id))
-        skill = skill_result.scalar_one_or_none()
+    for ls, skill in learner_skills_data:
         if not skill:
             continue
 

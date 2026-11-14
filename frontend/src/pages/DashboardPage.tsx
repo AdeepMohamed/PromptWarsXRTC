@@ -27,14 +27,17 @@ import api from "../lib/api";
 export function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [orchestrating, setOrchestrating] = useState(false);
 
   const fetchDashboard = async () => {
     try {
+      setError(null);
       const res = await api.get("/analytics/dashboard");
       setData(res.data.dashboard);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load dashboard data:", err);
+      setError("Unable to connect to career intelligence backend. Please ensure backend is running.");
     } finally {
       setLoading(false);
     }
@@ -68,6 +71,24 @@ export function DashboardPage() {
           </div>
           <p className="text-sm font-medium text-slate-600">Loading Career Intelligence Command Center...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">
+        <div className="p-3 rounded-full bg-rose-50 text-rose-600 mb-3">
+          <BrainCircuit className="w-6 h-6" />
+        </div>
+        <h3 className="text-sm font-semibold text-slate-900 mb-1">Unable to load Command Center</h3>
+        <p className="text-xs text-slate-500 mb-4 max-w-sm">{error}</p>
+        <button
+          onClick={() => { setLoading(true); fetchDashboard(); }}
+          className="px-4 py-2 bg-violet-600 text-white text-xs font-semibold rounded-xl hover:bg-violet-700 transition"
+        >
+          Retry Connection
+        </button>
       </div>
     );
   }
@@ -223,7 +244,7 @@ export function DashboardPage() {
                 >
                   <div className="flex items-start gap-3 min-w-0">
                     <span className="text-xs font-semibold px-2 py-0.5 rounded bg-violet-100 text-violet-700 shrink-0 mt-0.5">
-                      Wk {t.week_number}
+                      Wk {t.week_number || t.week || 1}
                     </span>
                     <div className="min-w-0">
                       <h4 className="text-sm font-semibold text-slate-800 truncate">{t.title}</h4>
@@ -312,23 +333,26 @@ export function DashboardPage() {
           </div>
 
           <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
-            {(data?.recent_agent_decisions || []).slice(0, 5).map((ev: any) => (
-              <div key={ev.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
-                <div>
-                  <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span className="capitalize">{ev.agent_name.replace("_", " ")}</span>
+            {(data?.recent_agent_decisions || []).slice(0, 5).map((ev: any, idx: number) => {
+              const agentName = String(ev.agent_name || ev.agent || "AI Agent");
+              return (
+                <div key={ev.id || idx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+                  <div>
+                    <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span className="capitalize">{agentName.replace(/_/g, " ")}</span>
+                    </div>
+                    <div className="text-slate-500 text-[11px] truncate max-w-xs">{ev.task}</div>
                   </div>
-                  <div className="text-slate-500 text-[11px] truncate max-w-xs">{ev.task}</div>
+                  <div className="text-right">
+                    <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-slate-200 text-slate-700">
+                      {ev.status}
+                    </span>
+                    <div className="text-[10px] text-slate-400 mt-1">{ev.duration_ms || 120}ms</div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] px-2 py-0.5 rounded font-mono bg-slate-200 text-slate-700">
-                    {ev.status}
-                  </span>
-                  <div className="text-[10px] text-slate-400 mt-1">{ev.duration_ms}ms</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

@@ -16,10 +16,10 @@ class ProjectResponse(BaseModel):
     id: UUID
     title: str
     description: Optional[str] = None
-    technologies: Optional[list] = None
+    technologies: Optional[list | dict | str] = None
     github_url: Optional[str] = None
     outcomes: Optional[str] = None
-    demonstrated_skills: Optional[list] = None
+    demonstrated_skills: Optional[list | dict | str] = None
     ai_analysis: Optional[str] = None
     status: str = "submitted"
     created_at: Optional[datetime] = None

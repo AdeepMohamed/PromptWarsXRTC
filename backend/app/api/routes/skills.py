@@ -28,6 +28,33 @@ async def list_skills(
     return {"skills": [{"id": str(s.id), "name": s.name, "category": s.category, "description": s.description} for s in skills]}
 
 
+@router.get("/dna")
+async def get_skill_dna(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    profile = (await db.execute(select(LearnerProfile).where(LearnerProfile.user_id == user.id))).scalar_one_or_none()
+    if not profile:
+        return {"error": "Learner profile not found"}
+
+    from app.models.agent import AgentActivityLog
+    recent_log = (await db.execute(
+        select(AgentActivityLog)
+        .where(AgentActivityLog.learner_id == profile.id, AgentActivityLog.agent_name == "skill_agent", AgentActivityLog.status == "completed")
+        .order_by(AgentActivityLog.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+
+    if recent_log and recent_log.execution_metadata and "skill_dna" in recent_log.execution_metadata:
+        return {"skill_analysis": recent_log.execution_metadata, "cached": True}
+
+    from app.agents.skill_agent import SkillAgent
+    agent = SkillAgent()
+    learner_data = await agent._load_learner_data(profile.id, db)
+    analysis = agent._fallback_analysis(learner_data)
+    return {"skill_analysis": analysis, "cached": False}
+
+
 @router.post("/analyze")
 async def analyze_skills(
     user: User = Depends(get_current_user),

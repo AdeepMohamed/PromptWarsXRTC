@@ -30,13 +30,8 @@ export function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-violet-500 selection:text-white">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link to="/" className="inline-flex items-center space-x-2.5 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-2xl font-bold tracking-tight text-white">
-            COGNIFY <span className="text-violet-400 text-xs px-2 py-0.5 rounded bg-violet-950/80 border border-violet-800/60 font-semibold">AI</span>
-          </span>
+        <Link to="/" className="inline-flex items-center justify-center mb-6">
+          <img src="/logo.png" alt="COGNIFY AI" className="h-12 w-auto object-contain" />
         </Link>
         <h2 className="text-2xl font-extrabold text-white">Create your account</h2>
         <p className="mt-2 text-sm text-slate-400">

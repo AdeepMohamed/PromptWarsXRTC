@@ -14,6 +14,8 @@ export function SkillDNAPage() {
   const [profile, setProfile] = useState<any>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [allSkills, setAllSkills] = useState<any[]>([]);
 
   // Add skill modal
@@ -23,9 +25,10 @@ export function SkillDNAPage() {
 
   const fetchData = async () => {
     try {
+      setError(null);
       const [profRes, anaRes, skillsRes] = await Promise.all([
         api.get("/learner/profile"),
-        api.post("/skills/analyze"),
+        api.get("/skills/dna"),
         api.get("/skills"),
       ]);
       setProfile(profRes.data.profile);
@@ -34,10 +37,27 @@ export function SkillDNAPage() {
       if (skillsRes.data.skills?.length > 0) {
         setSelectedSkillId(skillsRes.data.skills[0].id);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to load skill DNA:", err);
+      setError("Unable to load Skill DNA. Please check server connectivity.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReanalyze = async () => {
+    setAnalyzing(true);
+    try {
+      const res = await api.post("/skills/analyze");
+      if (res.data?.skill_analysis) {
+        setAnalysis(res.data.skill_analysis);
+      }
+      const profRes = await api.get("/learner/profile");
+      setProfile(profRes.data.profile);
+    } catch (err) {
+      console.error("Failed to reanalyze:", err);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
@@ -65,8 +85,26 @@ export function SkillDNAPage() {
           <div className="w-10 h-10 rounded-xl bg-violet-600/20 text-violet-600 flex items-center justify-center mx-auto mb-4 animate-spin">
             <BrainCircuit className="w-5 h-5" />
           </div>
-          <p className="text-xs font-medium text-slate-600">Generating Skill DNA Radar...</p>
+          <p className="text-xs font-medium text-slate-600">Retrieving Skill DNA Fingerprint...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">
+        <div className="p-3 rounded-full bg-rose-50 text-rose-600 mb-3">
+          <BrainCircuit className="w-6 h-6" />
+        </div>
+        <h3 className="text-sm font-semibold text-slate-900 mb-1">Failed to retrieve Skill DNA</h3>
+        <p className="text-xs text-slate-500 mb-4 max-w-sm">{error}</p>
+        <button
+          onClick={() => { setLoading(true); fetchData(); }}
+          className="px-4 py-2 bg-violet-600 text-white text-xs font-semibold rounded-xl hover:bg-violet-700 transition"
+        >
+          Retry Connection
+        </button>
       </div>
     );
   }
@@ -96,12 +134,22 @@ export function SkillDNAPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/20 transition self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" /> Add Skill Entry
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            onClick={handleReanalyze}
+            disabled={analyzing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition disabled:opacity-50"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+            {analyzing ? "Synthesizing..." : "Re-analyze with AI"}
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-violet-600 hover:bg-violet-500 text-white shadow-md shadow-violet-600/20 transition"
+          >
+            <Plus className="w-4 h-4" /> Add Skill Entry
+          </button>
+        </div>
       </div>
 
       {/* Main Grid: Radar Visualization + Dimension Overview */}
