@@ -188,3 +188,4 @@ When Grok API is unavailable:
 - Use async/await throughout
 - Validate all AI outputs with Pydantic before using
 - Never expose raw AI output to users without validation
+

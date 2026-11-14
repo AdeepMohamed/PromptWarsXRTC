@@ -141,3 +141,4 @@ Response: {project: {id, ..., demonstrated_skills, ai_analysis}}
 
 ### GET /api/projects
 Response: {projects: [project_objects]}
+

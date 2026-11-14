@@ -1,0 +1,21 @@
+# Environments
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+.pytest_cache/
+
+# Local envs
+.env
+.env.local
