@@ -123,17 +123,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 # High-speed local replica engine for zero-downtime resilience
-_fallback_engine = create_async_engine(
-    "sqlite+aiosqlite:///./cognify.db",
-    connect_args={"check_same_thread": False},
-    pool_recycle=300,
-    echo=False,
-)
-_FallbackSessionLocal = async_sessionmaker(
-    _fallback_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
+try:
+    _fallback_engine = create_async_engine(
+        "sqlite+aiosqlite:///./cognify.db",
+        connect_args={"check_same_thread": False},
+        pool_recycle=300,
+        echo=False,
+    )
+    _FallbackSessionLocal = async_sessionmaker(
+        _fallback_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+except Exception as e:
+    logger.warning(f"aiosqlite local fallback not initialized: {e}")
+    _FallbackSessionLocal = AsyncSessionLocal
 
 _neon_status_cache = {"is_healthy": False, "last_checked": 0.0}
 
@@ -160,7 +164,7 @@ async def _check_primary_db() -> bool:
 
 async def get_db():
     is_primary_up = await _check_primary_db()
-    session_factory = AsyncSessionLocal if is_primary_up else _FallbackSessionLocal
+    session_factory = AsyncSessionLocal if (is_primary_up or not _FallbackSessionLocal) else _FallbackSessionLocal
     async with session_factory() as session:
         try:
             yield session
