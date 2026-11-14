@@ -287,3 +287,4 @@ export function GuidedTourModal({
     </div>
   );
 }
+
