@@ -97,14 +97,16 @@ def resolve_db_connection() -> tuple[str, dict]:
 
 db_url, connect_args = resolve_db_connection()
 
+_is_postgres = "postgres" in db_url
+
 engine = create_async_engine(
     db_url,
     connect_args=connect_args,
     pool_size=20,
     max_overflow=20,
     pool_recycle=300,
-    pool_timeout=15.0,
-    pool_pre_ping=False,
+    pool_timeout=30.0,
+    pool_pre_ping=True,
     echo=False,
 )
 
@@ -142,29 +144,12 @@ except Exception as e:
 _neon_status_cache = {"is_healthy": False, "last_checked": 0.0}
 
 async def _check_primary_db() -> bool:
-    import time
-    now = time.time()
-    # If checked within last 60s, return cached status immediately (0ms latency)
-    if now - _neon_status_cache["last_checked"] < 60.0:
-        return _neon_status_cache["is_healthy"]
-
-    _neon_status_cache["last_checked"] = now
-    try:
-        import asyncio
-        from sqlalchemy import text
-        async def _probe():
-            async with engine.connect() as conn:
-                await conn.execute(text("SELECT 1"))
-        await asyncio.wait_for(_probe(), timeout=1.0)
-        _neon_status_cache["is_healthy"] = True
+    if _is_postgres:
         return True
-    except Exception:
-        _neon_status_cache["is_healthy"] = False
-        return False
+    return False
 
 async def get_db():
-    is_primary_up = await _check_primary_db()
-    session_factory = AsyncSessionLocal if (is_primary_up or not _FallbackSessionLocal) else _FallbackSessionLocal
+    session_factory = AsyncSessionLocal if (_is_postgres or not _FallbackSessionLocal) else _FallbackSessionLocal
     async with session_factory() as session:
         try:
             yield session

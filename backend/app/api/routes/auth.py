@@ -15,3 +15,14 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
 @router.post("/login", response_model=AuthResponse)
 async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
     return await login_user(db, data)
+
+
+@router.get("/seed-demo")
+@router.post("/seed-demo")
+async def seed_demo_endpoint(db: AsyncSession = Depends(get_db)):
+    try:
+        from seed_demo_data import seed_session
+        await seed_session(db, "Production Neon Database")
+        return {"status": "success", "message": "Alex Morgan 6-week demo data successfully seeded"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
