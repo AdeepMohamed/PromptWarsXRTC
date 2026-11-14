@@ -216,3 +216,4 @@ export function SimulatorPage() {
     </div>
   );
 }
+

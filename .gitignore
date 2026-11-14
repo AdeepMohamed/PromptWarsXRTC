@@ -19,3 +19,4 @@ __pycache__/
 # Local envs
 .env
 .env.local
+

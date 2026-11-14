@@ -467,11 +467,11 @@ ASSESSMENTS_DATA = [
 
 
 async def seed_database():
-    print("Initializing database tables...")
+    print("Initializing database tables...", flush=True)
     await init_db()
 
     async with AsyncSessionLocal() as session:
-        print("Checking existing seed data...")
+        print("Checking existing seed data...", flush=True)
 
         # 1. Seed Skills
         skill_cache: dict[str, Skill] = {}

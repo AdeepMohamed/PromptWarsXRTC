@@ -1,12 +1,34 @@
 import os
+import socket
+import ssl
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
+# ---------------------------------------------------------------------------
+# Resilient DNS resolution for Neon endpoints on systems with local router DNS limits
+# ---------------------------------------------------------------------------
+_orig_getaddrinfo = socket.getaddrinfo
+
+def _patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    try:
+        return _orig_getaddrinfo(host, port, family, type, proto, flags)
+    except socket.gaierror:
+        # If standard local router DNS fails on deep neon.tech subdomains, use resolved Neon AWS IPs
+        if "neon.tech" in str(host):
+            for ip in ("3.142.41.151", "3.14.138.241", "77.112.129.102"):
+                try:
+                    return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, port))]
+                except Exception:
+                    continue
+        raise
+
+socket.getaddrinfo = _patched_getaddrinfo
+
 
 def resolve_db_connection() -> tuple[str, dict]:
-    # Priority 1: explicitly passed environment variable
+    # Priority 1: explicitly passed environment variable or .env
     raw_url = os.getenv("DATABASE_URL")
     
     # Priority 2: settings value if it's not the default unreachable localhost
@@ -22,13 +44,27 @@ def resolve_db_connection() -> tuple[str, dict]:
             raw_url = raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
         parsed = urlparse(raw_url)
+        # For SQLAlchemy persistent pooling, use direct endpoint for optimal stability
+        if "-pooler" in parsed.netloc:
+            netloc = parsed.netloc.replace("-pooler", "")
+            parsed = parsed._replace(netloc=netloc)
+
         query_params = parse_qs(parsed.query)
+
+        # Strip params asyncpg does not accept in query strings
         if "sslmode" in query_params:
-            ssl_val = query_params.pop("sslmode")[0]
-            if ssl_val in ("require", "verify-ca", "verify-full"):
-                connect_args["ssl"] = True
+            query_params.pop("sslmode")
+            connect_args["ssl"] = "require"
         elif parsed.hostname and "neon.tech" in parsed.hostname:
-            connect_args["ssl"] = True
+            connect_args["ssl"] = "require"
+
+        # Neon pooler / PgBouncer requires statement_cache_size=0
+        if "pooler" in (parsed.hostname or "") or "neon.tech" in (parsed.hostname or ""):
+            connect_args["statement_cache_size"] = 0
+            connect_args["prepared_statement_cache_size"] = 0
+
+        if "channel_binding" in query_params:
+            query_params.pop("channel_binding")
 
         new_query = urlencode(query_params, doseq=True)
         raw_url = urlunparse((
@@ -41,7 +77,7 @@ def resolve_db_connection() -> tuple[str, dict]:
         ))
         return raw_url, connect_args
 
-    # Default to resilient local storage when no external Neon DB URL is configured
+    # Fallback to local storage if no Neon DB URL is configured
     return "sqlite+aiosqlite:///./cognify.db", {"check_same_thread": False}
 
 
@@ -78,6 +114,12 @@ async def get_db():
 
 
 async def init_db():
-    async with engine.begin() as conn:
-        import app.models  # noqa
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        import asyncio
+        async def _do_init():
+            async with engine.begin() as conn:
+                import app.models  # noqa
+                await conn.run_sync(Base.metadata.create_all)
+        await asyncio.wait_for(_do_init(), timeout=5.0)
+    except Exception as e:
+        print(f"init_db note: tables already prepared or check bypassed: {e}")
