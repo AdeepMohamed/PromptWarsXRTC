@@ -30,16 +30,21 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [orchestrating, setOrchestrating] = useState(false);
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (retryCount = 0) => {
     try {
       setError(null);
       const res = await api.get("/analytics/dashboard");
       setData(res.data.dashboard);
+      setLoading(false);
     } catch (err: any) {
       console.error("Failed to load dashboard data:", err);
-      setError("Unable to connect to career intelligence backend. Please ensure backend is running.");
-    } finally {
-      setLoading(false);
+      if (retryCount < 2) {
+        // Auto-retry once Render finishes waking up from cold start
+        setTimeout(() => fetchDashboard(retryCount + 1), 3000);
+      } else {
+        setError("Backend service is waking up or connecting. Click Retry Connection below.");
+        setLoading(false);
+      }
     }
   };
 
