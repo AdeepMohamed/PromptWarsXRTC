@@ -22,15 +22,15 @@ class LearnerProfile(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    user: Mapped["User"] = relationship(back_populates="learner_profile", lazy="selectin")
-    target_career: Mapped[Optional["CareerRole"]] = relationship(lazy="selectin")
-    skills: Mapped[list["LearnerSkill"]] = relationship(back_populates="learner", lazy="selectin")
-    roadmaps: Mapped[list["LearningRoadmap"]] = relationship(back_populates="learner", lazy="selectin")
-    assessment_results: Mapped[list["AssessmentResult"]] = relationship(back_populates="learner", lazy="selectin")
-    project_submissions: Mapped[list["ProjectSubmission"]] = relationship(back_populates="learner", lazy="selectin")
-    activities: Mapped[list["LearningActivity"]] = relationship(back_populates="learner", lazy="selectin")
-    goal_history: Mapped[list["CareerGoalHistory"]] = relationship(back_populates="learner", lazy="selectin")
-    agent_logs: Mapped[list["AgentActivityLog"]] = relationship(back_populates="learner", lazy="selectin")
+    user: Mapped["User"] = relationship(back_populates="learner_profile")
+    target_career: Mapped[Optional["CareerRole"]] = relationship()
+    skills: Mapped[list["LearnerSkill"]] = relationship(back_populates="learner")
+    roadmaps: Mapped[list["LearningRoadmap"]] = relationship(back_populates="learner")
+    assessment_results: Mapped[list["AssessmentResult"]] = relationship(back_populates="learner")
+    project_submissions: Mapped[list["ProjectSubmission"]] = relationship(back_populates="learner")
+    activities: Mapped[list["LearningActivity"]] = relationship(back_populates="learner")
+    goal_history: Mapped[list["CareerGoalHistory"]] = relationship(back_populates="learner")
+    agent_logs: Mapped[list["AgentActivityLog"]] = relationship(back_populates="learner")
 
 
 class LearnerSkill(Base):
@@ -47,7 +47,7 @@ class LearnerSkill(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
-    learner: Mapped["LearnerProfile"] = relationship(back_populates="skills", lazy="selectin")
+    learner: Mapped["LearnerProfile"] = relationship(back_populates="skills")
     skill: Mapped["Skill"] = relationship(back_populates="learner_skills", lazy="selectin")
 
     from sqlalchemy import UniqueConstraint

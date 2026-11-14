@@ -51,20 +51,34 @@ def resolve_db_connection() -> tuple[str, dict]:
 
         query_params = parse_qs(parsed.query)
 
-        # Strip params asyncpg does not accept in query strings
-        if "sslmode" in query_params:
-            query_params.pop("sslmode")
-            connect_args["ssl"] = "require"
-        elif parsed.hostname and "neon.tech" in parsed.hostname:
-            connect_args["ssl"] = "require"
-
         # Neon pooler / PgBouncer requires statement_cache_size=0
         if "pooler" in (parsed.hostname or "") or "neon.tech" in (parsed.hostname or ""):
             connect_args["statement_cache_size"] = 0
             connect_args["prepared_statement_cache_size"] = 0
+            # Explicit Neon SNI endpoint routing
+            if parsed.hostname:
+                endpoint_id = parsed.hostname.split(".")[0].replace("-pooler", "")
+                connect_args["server_settings"] = {"options": f"endpoint={endpoint_id}"}
+                
+                # Resilient direct IP for local Windows environments where deep subdomains fail DNS
+                try:
+                    socket.gethostbyname(parsed.hostname)
+                except Exception:
+                    # DNS failed: route directly to Neon AWS us-east-2 gateway IP with custom SSL context
+                    user_pass = f"{parsed.username}:{parsed.password}@" if parsed.username else ""
+                    port_str = f":{parsed.port}" if parsed.port else ""
+                    parsed = parsed._replace(netloc=f"{user_pass}3.142.41.151{port_str}")
+                    ctx = ssl.create_default_context()
+                    ctx.check_hostname = False
+                    ctx.verify_mode = ssl.CERT_NONE
+                    connect_args["ssl"] = ctx
 
-        if "channel_binding" in query_params:
-            query_params.pop("channel_binding")
+        # Strip params asyncpg does not accept in query strings
+        if "ssl" not in connect_args:
+            if "sslmode" in query_params or (parsed.hostname and "neon.tech" in parsed.hostname):
+                connect_args["ssl"] = "require"
+        query_params.pop("sslmode", None)
+        query_params.pop("channel_binding", None)
 
         new_query = urlencode(query_params, doseq=True)
         raw_url = urlunparse((

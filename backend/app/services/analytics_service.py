@@ -20,15 +20,39 @@ async def get_dashboard(db: AsyncSession, user: User) -> dict:
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    # Skills
-    skills_result = await db.execute(
-        select(LearnerSkill).where(LearnerSkill.learner_id == profile.id)
+    # 1. Fetch skills with joined skill name in 1 query
+    skills_res = await db.execute(
+        select(LearnerSkill, Skill.name)
+        .join(Skill, LearnerSkill.skill_id == Skill.id)
+        .where(LearnerSkill.learner_id == profile.id)
     )
-    learner_skills = skills_result.scalars().all()
-    total_skills = len(learner_skills)
-    skills_mastered = sum(1 for s in learner_skills if s.proficiency >= 70)
+    skill_rows = skills_res.all()
+    total_skills = len(skill_rows)
+    skills_mastered = sum(1 for ls, _ in skill_rows if ls.proficiency >= 70)
 
-    # Recent assessments
+    recommendations = []
+    for ls, sname in skill_rows:
+        if ls.proficiency < 30:
+            recommendations.append(f"Start learning {sname} — currently at {ls.proficiency:.0f}%")
+            if len(recommendations) >= 3:
+                break
+
+    # 2. Fetch all roadmap tasks in 1 query
+    tasks_res = await db.execute(
+        select(RoadmapTask)
+        .join(LearningRoadmap, RoadmapTask.roadmap_id == LearningRoadmap.id)
+        .where(LearningRoadmap.learner_id == profile.id)
+    )
+    tasks = tasks_res.scalars().all()
+    total_tasks = len(tasks)
+    completed_tasks = sum(1 for t in tasks if t.status == "completed")
+    upcoming = [
+        {"id": str(t.id), "title": t.title, "status": t.status, "week": t.week_number}
+        for t in tasks if t.status in ("pending", "in_progress")
+    ]
+    learning_progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+
+    # 3. Recent assessments
     assess_result = await db.execute(
         select(AssessmentResult)
         .where(AssessmentResult.learner_id == profile.id)
@@ -40,30 +64,7 @@ async def get_dashboard(db: AsyncSession, user: User) -> dict:
         for r in assess_result.scalars().all()
     ]
 
-    # Learning progress (completed tasks / total tasks)
-    roadmap_result = await db.execute(
-        select(LearningRoadmap).where(LearningRoadmap.learner_id == profile.id)
-    )
-    roadmaps = roadmap_result.scalars().all()
-    total_tasks = 0
-    completed_tasks = 0
-    upcoming = []
-    for rm in roadmaps:
-        tasks_result = await db.execute(
-            select(RoadmapTask).where(RoadmapTask.roadmap_id == rm.id)
-        )
-        tasks = tasks_result.scalars().all()
-        total_tasks += len(tasks)
-        completed_tasks += sum(1 for t in tasks if t.status == "completed")
-        for t in tasks:
-            if t.status in ("pending", "in_progress"):
-                upcoming.append({"id": str(t.id), "title": t.title, "status": t.status, "week": t.week_number})
-                if len(upcoming) >= 5:
-                    break
-
-    learning_progress = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
-
-    # Recent agent decisions
+    # 4. Recent agent decisions
     agent_result = await db.execute(
         select(AgentActivityLog)
         .where(AgentActivityLog.learner_id == profile.id)
@@ -75,7 +76,7 @@ async def get_dashboard(db: AsyncSession, user: User) -> dict:
         for a in agent_result.scalars().all()
     ]
 
-    # Weekly activity
+    # 5. Weekly activity
     week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     activity_result = await db.execute(
         select(LearningActivity)
@@ -85,16 +86,6 @@ async def get_dashboard(db: AsyncSession, user: User) -> dict:
         {"type": a.activity_type, "description": a.description, "date": a.created_at.isoformat() if a.created_at else None}
         for a in activity_result.scalars().all()
     ]
-
-    recommendations = []
-    for s in learner_skills:
-        if s.proficiency < 30:
-            skill_r = await db.execute(select(Skill).where(Skill.id == s.skill_id))
-            sk = skill_r.scalar_one_or_none()
-            if sk:
-                recommendations.append(f"Start learning {sk.name} — currently at {s.proficiency:.0f}%")
-            if len(recommendations) >= 3:
-                break
 
     return DashboardResponse(
         career_readiness=profile.career_readiness_score,
