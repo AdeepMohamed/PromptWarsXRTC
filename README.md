@@ -205,5 +205,32 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
+## 🧪 Automated Testing & Verification Suite
+
+COGNIFY AI features an automated test suite covering unit tests, agent fallback logic, security mechanisms, and API contracts:
+
+### 1. Backend Pytest Suite (10 Automated Tests)
+```bash
+cd backend
+pytest
+```
+- **Authentication & Security**: Tests password hashing (bcrypt), token validation (JWT), and unauthorized route protection.
+- **5 Autonomous Agents**: Validates Skill Agent competency vector math, Career Agent weighted vector readiness scoring, and Learning Agent fallback roadmap synthesis.
+- **Public API Contracts**: Verifies `/api/health`, `/api/skills`, and `/api/careers` schemas.
+
+### 2. Frontend Test Suite
+```bash
+cd frontend
+npm test
+```
+- Validates route integrity across all 11 core application views.
+- Validates multi-tier evidence classification (`claimed`, `assessed`, `demonstrated`).
+- Validates production API URL normalization.
+
+### 3. Continuous Integration (CI)
+GitHub Actions workflow (`.github/workflows/test.yml`) executes on every commit to enforce test coverage.
+
+---
+
 ## 📄 License
 MIT License. Built with ❤️ for the PromptWars / Cognify AI Hackathon.
